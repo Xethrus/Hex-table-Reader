@@ -28,7 +28,7 @@ public:
 */
 
 //
-//check: good
+// check: good
 void checkHeaders(istream &inFile)
 {
     string line;
@@ -43,13 +43,13 @@ void checkHeaders(istream &inFile)
         throw HexTableError("Unmatching Row Two");
     }
 }
-//check: good
+// check: good
 class ByteValueReader
 {
 public:
     virtual unsigned char readChar(istream &inFile) = 0;
 };
-//check: good
+// check: good
 int hexToInt(char c)
 {
     if (c >= '0' && c <= '9')
@@ -62,7 +62,7 @@ int hexToInt(char c)
     }
     throw HexTableError("Invalid Hexadecimal Conversion! Char is not a Hex!");
 }
-//check: good
+// check: good
 int binaryToInt(char c)
 {
     if (c >= '0' && c <= '1')
@@ -71,7 +71,7 @@ int binaryToInt(char c)
     }
     throw HexTableError("Invalid Binary Conversion! Char is not binary!");
 }
-//check: good
+// check: good
 int decimalToInt(char c)
 {
     if (c >= '0' && c <= '9')
@@ -85,8 +85,7 @@ int decimalToInt(char c)
     throw HexTableError("Invalid, Char is not decimal!");
 }
 
-
-//check: good
+// check: good
 class HexReader : public ByteValueReader
 {
 public:
@@ -98,11 +97,15 @@ public:
         {
             throw HexTableError("Char Unreadable!");
         }
+        if (buf[0] == ' ' && buf[1] == ' ')
+        {
+            return 0;
+        }
         return hexToInt(buf[0]) * 16 + hexToInt(buf[1]);
     }
 };
 
-//check: good
+// check: good
 class BinaryReader : public ByteValueReader
 {
 public:
@@ -113,6 +116,10 @@ public:
         if (inFile.bad())
         {
             throw HexTableError("Binary Unreadable!");
+        }
+        if (buf[0] == ' ')
+        {
+            return 0;
         }
         return (
             binaryToInt(buf[0]) * 128 +
@@ -126,7 +133,7 @@ public:
     }
 };
 
-//check: ~good
+// check: ~good
 class DecimalReader : public ByteValueReader
 {
 public:
@@ -138,9 +145,16 @@ public:
         {
             throw HexTableError("Binary Unreadable!");
         }
-        if(buf[0] == 0 && buf[1] == ' ' && buf[2] == 1) {
+        if (buf[0] == ' ' && buf[1] == ' ' && buf[2] == ' ')
+        {
+            return 0;
+        }
+        if (buf[0] == 0 && buf[1] == ' ' && buf[2] == 1)
+        {
             throw HexTableError("Bad/Invalid value ex:\"0 1\" or \"001\"");
-        } else if(buf[0] == 0 && buf[1] == 0 && buf[2] == 1) {
+        }
+        else if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1)
+        {
             throw HexTableError("Bad/Invalid value ex:\"0 1\" or \"001\"");
         }
         return (
@@ -150,7 +164,7 @@ public:
     }
 };
 
-//check: good
+// check: good
 class PrintableReader : public ByteValueReader
 {
 public:
@@ -180,6 +194,10 @@ public:
         }
         else if (buf[0] == ' ' && buf[1] == ' ' && buf[2] == ' ')
         {
+            if (buf[3] == ' ')
+            {
+                return 0;
+            }
             return buf[3];
         }
         else if (buf[0] == ' ' && buf[1] == '\'' && buf[2] == ' ' && buf[3] == '\'')
@@ -190,7 +208,7 @@ public:
     }
 };
 
-//check: good
+// check: good
 void readColumn(istream &inFile, vector<unsigned char> &chars, ByteValueReader &reader)
 {
     if (inFile.get() != '|' || inFile.get() != ' ')
@@ -206,7 +224,7 @@ void readColumn(istream &inFile, vector<unsigned char> &chars, ByteValueReader &
         }
     }
 }
-//check: good
+// check: good
 vector<vector<unsigned char>> readTable(istream &inFile)
 {
     checkHeaders(inFile);
@@ -218,7 +236,6 @@ vector<vector<unsigned char>> readTable(istream &inFile)
     DecimalReader readDecimalChar;
     ByteValueReader *readers[NUMCOLUMNS] = {
         &readPrintableChars, &readHexChar, &readBinaryChar, &readDecimalChar};
-
     while (inFile.peek() == '|')
     {
         for (int i = 0; i < NUMCOLUMNS; i++)
@@ -227,6 +244,9 @@ vector<vector<unsigned char>> readTable(istream &inFile)
         }
         if (inFile.get() != '|' || inFile.get() != '\n')
         {
+            if(inFile.eof()) {
+                break;
+            }
             throw HexTableError("Row Missing Valid ending!");
         }
     }
@@ -238,36 +258,45 @@ vector<vector<unsigned char>> readTable(istream &inFile)
         }
         else
         {
+            //cout << count << endl;
             throw HexTableError("Line Lacking \"|\"!");
         }
     }
     return chars;
 }
+void printOutput(ofstream &outFile, char c1, char c2, char c3, char c4)
+{
+    if(c1 == 0) {
+        return;
+    }
+    if(c1 == c2 && c1 == c3 && c1 == c4) {
+        outFile << c1;
+    } else if(c1 != c2 && c1 != c3) {
+        outFile << c1;
+    } else if(c2 != c3 && c2 != c4) {
+        outFile << c2;
+    } else if(c3 != c4 && c3 != c1) {
+        outFile << c3;
+    } else if(c4 != c1 && c4 != c2) {
+        outFile << c4;
+    }
+}
 int main(int argc, const char *argv[])
 {
+    if (argc != 3)
+    {
+        throw HexTableError("Usage: ./a.exe [inFile] [outFile]");
+    }
     ifstream inFile(argv[1]);
+    ofstream outFile(argv[2]);
 
     vector<vector<unsigned char>> chars = readTable(inFile);
 
+    int count = 0;
     for (unsigned char c : chars[0])
     {
-        cout << "printable: ";
-        cout << static_cast<int>(c) << endl;
-    }
-    for (unsigned c : chars[1])
-    {
-        cout << "hex: ";
-        cout << static_cast<int>(c) << endl;
-    }
-    for (unsigned c : chars[2])
-    {
-        cout << "binary: ";
-        cout << static_cast<int>(c) << endl;
-    }
-    for (unsigned c : chars[3])
-    {
-        cout << "decimal: ";
-        cout << static_cast<int>(c) << endl;
+        printOutput(outFile, chars[0][count], chars[1][count], chars[2][count], chars[3][count]);
+        count++;
     }
     return 0;
 }
