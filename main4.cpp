@@ -10,7 +10,7 @@ const char *EXPECTED_ROW_ONE = "| Printable           | Hexadecimal | Binary    
 const char *EXPECTED_ROW_TWO = "|---------------------+-------------+-------------------------------------+-----------------|";
 const int VALUEPERCOL = 4;
 const int NUMCOLUMNS = 4;
-
+int total = 0;
 // good habit Mikel recommends getting into
 class HexTableError : public runtime_error
 {
@@ -99,6 +99,7 @@ public:
         }
         if (buf[0] == ' ' && buf[1] == ' ')
         {
+            total--;
             return 0;
         }
         return hexToInt(buf[0]) * 16 + hexToInt(buf[1]);
@@ -211,6 +212,7 @@ public:
 // check: good
 void readColumn(istream &inFile, vector<unsigned char> &chars, ByteValueReader &reader)
 {
+    total++;
     if (inFile.get() != '|' || inFile.get() != ' ')
     {
         throw HexTableError("Row Lacking: \"|\"!");
@@ -266,9 +268,6 @@ vector<vector<unsigned char>> readTable(istream &inFile)
 }
 void printOutput(ofstream &outFile, char c1, char c2, char c3, char c4)
 {
-    if(c1 == 0) {
-        return;
-    }
     if(c1 == c2 && c1 == c3 && c1 == c4) {
         outFile << c1;
     } else if(c1 != c2 && c1 != c3) {
@@ -292,11 +291,10 @@ int main(int argc, const char *argv[])
 
     vector<vector<unsigned char>> chars = readTable(inFile);
 
-    int count = 0;
-    for (unsigned char c : chars[0])
+
+    for (int i = 0; i < total; i++)
     {
-        printOutput(outFile, chars[0][count], chars[1][count], chars[2][count], chars[3][count]);
-        count++;
+        printOutput(outFile, chars[0][i], chars[1][i], chars[2][i], chars[3][i]);
     }
     return 0;
 }
